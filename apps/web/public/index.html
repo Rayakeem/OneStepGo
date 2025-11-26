@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>유턴없이 GO - 경로 최적화</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'NanumSquareRound', 'NanumSquare', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F8F7F4;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+      padding-top: 40px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: #191f28;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .header p {
+      font-size: 1.125rem;
+      color: #4e5968;
+      font-weight: 500;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      margin-bottom: 20px;
+      border: 1px solid #f2f4f6;
+    }
+
+    .form-group {
+      margin-bottom: 28px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #191f28;
+      font-size: 0.9375rem;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 16px 18px;
+      border: 1.5px solid #e5e8eb;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.2s;
+      font-family: inherit;
+      background: #fafbfc;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #FDB813;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(253, 184, 19, 0.1);
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 16px 18px;
+      border: 1.5px dashed #e5e8eb;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fafbfc;
+    }
+
+    input[type="file"]:hover {
+      border-color: #FDB813;
+      background: #FFF3B7;
+    }
+
+    .btn {
+      background: #FDB813;
+      color: white;
+      border: none;
+      padding: 18px 32px;
+      border-radius: 12px;
+      font-size: 1.0625rem;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.2s;
+      letter-spacing: -0.01em;
+    }
+
+    .btn:hover {
+      background: #f4ae00;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(253, 184, 19, 0.3);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #4e5968;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 48px;
+      height: 48px;
+      border: 3px solid #f2f4f6;
+      border-top: 3px solid #FDB813;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading p {
+      margin-top: 20px;
+      font-weight: 600;
+      font-size: 0.9375rem;
+    }
+
+    .result {
+      margin-top: 32px;
+    }
+
+    .result h2 {
+      color: #191f28;
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .summary-item {
+      background: #FFF3B7;
+      padding: 24px 20px;
+      border-radius: 16px;
+      text-align: center;
+      border: 1px solid #F4E7AA;
+    }
+
+    .summary-item .label {
+      font-size: 0.875rem;
+      color: #4e5968;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .summary-item .value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #191f28;
+      letter-spacing: -0.02em;
+    }
+
+    .route-list {
+      list-style: none;
+    }
+
+    .route-item {
+      background: white;
+      padding: 20px;
+      margin-bottom: 12px;
+      border-radius: 16px;
+      border: 1.5px solid #f2f4f6;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .route-item:hover {
+      border-color: #FDB813;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    }
+
+    .route-item .order {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FDB813;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .route-item-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .route-item .address {
+      font-weight: 600;
+      color: #191f28;
+      font-size: 1rem;
+      word-break: keep-all;
+    }
+
+    .route-item .distance {
+      color: #6b7684;
+      font-size: 0.875rem;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    .error {
+      background: #fff5f5;
+      border: 1.5px solid #fecaca;
+      padding: 20px;
+      border-radius: 12px;
+      color: #dc2626;
+      margin-top: 20px;
+    }
+
+    .error-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 0.9375rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+      background: #f2f4f6;
+      padding: 6px;
+      border-radius: 14px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 14px;
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.2s;
+      color: #6b7684;
+      font-size: 0.9375rem;
+    }
+
+    .tab:hover {
+      background: rgba(253, 184, 19, 0.1);
+      color: #191f28;
+    }
+
+    .tab.active {
+      background: white;
+      color: #191f28;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    small {
+      color: #6b7684;
+      font-size: 0.8125rem;
+    }
+
+    h3 {
+      color: #191f28;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    ::placeholder {
+      color: #adb5bd;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>
+        <img src="/images/logo2.png" alt="으차 로고" style="height: 60px; vertical-align: middle; margin-right: 12px;">
+        유턴없이 GO
+      </h1>
+      <p>대형폐기물 수거를 위한 경로 최적화 서비스</p>
+    </div>
+
+    <div class="card">
+      <form id="optimizeForm">
+        <div class="form-group">
+          <label for="startLocation">📍 현재 위치 (시작점)</label>
+          <input 
+            type="text" 
+            id="startLocation" 
+            name="startLocation" 
+            placeholder="예: 서울시 강남구 테헤란로 123"
+            required
+          >
+        </div>
+
+        <div class="tabs">
+          <button type="button" class="tab active" data-tab="excel">엑셀 파일 업로드</button>
+          <button type="button" class="tab" data-tab="text">주소 직접 입력</button>
+        </div>
+
+        <div class="tab-content active" id="excel-content">
+          <div class="form-group">
+            <label for="file">📄 엑셀 파일</label>
+            <input 
+              type="file" 
+              id="file" 
+              name="file" 
+              accept=".xlsx,.xls"
+            >
+            <small style="color: #666; margin-top: 8px; display: block;">
+              * 엑셀 파일에 '배출위치' 컬럼이 있어야 합니다.
+            </small>
+          </div>
+        </div>
+
+        <div class="tab-content" id="text-content">
+          <div class="form-group">
+            <label for="addresses">📝 주소 목록</label>
+            <textarea 
+              id="addresses" 
+              name="addresses" 
+              rows="8"
+              placeholder="한 줄에 하나씩 주소를 입력하세요.&#10;&#10;예:&#10;서울시 강남구 역삼동 123&#10;서울시 서초구 서초동 456&#10;서울시 송파구 잠실동 789"
+            ></textarea>
+          </div>
+        </div>
+
+        <button type="submit" class="btn">경로 최적화 시작</button>
+      </form>
+
+      <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p style="margin-top: 16px;">최적 경로를 계산하고 있습니다...</p>
+      </div>
+
+      <div id="error" class="error" style="display: none;"></div>
+
+      <div id="result" class="result" style="display: none;">
+        <h2>✅ 최적 경로</h2>
+        
+        <div class="summary">
+          <div class="summary-item">
+            <div class="label">방문 장소</div>
+            <div class="value" id="locationCount">-</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">총 거리</div>
+            <div class="value" id="totalDistance">-</div>
+          </div>
+          <div class="summary-item">
+            <div class="label">예상 시간</div>
+            <div class="value" id="totalTime">-</div>
+          </div>
+        </div>
+
+        <h3 style="margin-bottom: 16px;">방문 순서</h3>
+        <ul id="routeList" class="route-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 탭 전환
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        this.classList.add('active');
+        const tabName = this.dataset.tab;
+        document.getElementById(`${tabName}-content`).classList.add('active');
+      });
+    });
+
+    // 폼 제출
+    document.getElementById('optimizeForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const startLocation = document.getElementById('startLocation').value;
+      const fileInput = document.getElementById('file');
+      const addressesInput = document.getElementById('addresses').value;
+
+      // 입력 검증
+      const activeTab = document.querySelector('.tab.active').dataset.tab;
+      if (activeTab === 'excel' && !fileInput.files[0]) {
+        showError('엑셀 파일을 선택해주세요.');
+        return;
+      }
+      if (activeTab === 'text' && !addressesInput.trim()) {
+        showError('주소를 입력해주세요.');
+        return;
+      }
+
+      // UI 초기화
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('result').style.display = 'none';
+
+      try {
+        // FormData 생성
+        const formData = new FormData();
+        formData.append('startLocation', startLocation);
+
+        if (activeTab === 'excel') {
+          formData.append('file', fileInput.files[0]);
+        } else {
+          formData.append('addresses', addressesInput);
+        }
+
+        // API 호출
+        const response = await fetch('/api/optimize', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error.message + (data.error.solution ? '\n\n💡 ' + data.error.solution : ''));
+        }
+
+        // 결과 표시
+        displayResult(data.data);
+
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    });
+
+    function displayResult(route) {
+      // 요약 정보
+      document.getElementById('locationCount').textContent = route.nodes.length;
+      document.getElementById('totalDistance').textContent = formatDistance(route.totalDistance);
+      document.getElementById('totalTime').textContent = formatTime(route.totalTime);
+
+      // 경로 목록
+      const routeList = document.getElementById('routeList');
+      routeList.innerHTML = '';
+
+      // 시작점
+      const startItem = document.createElement('li');
+      startItem.className = 'route-item';
+      startItem.innerHTML = `
+        <span class="order">🏠</span>
+        <div class="route-item-content">
+          <div class="address">시작: ${route.startLocation.raw}</div>
+        </div>
+      `;
+      routeList.appendChild(startItem);
+
+      // 경유지
+      route.nodes.forEach(node => {
+        const item = document.createElement('li');
+        item.className = 'route-item';
+        item.innerHTML = `
+          <span class="order">${node.order}</span>
+          <div class="route-item-content">
+            <div class="address">${node.pickupItem.address.raw}</div>
+            <div class="distance">이전 위치로부터 ${formatDistance(node.distanceFromPrevious)} (약 ${formatTime(node.estimatedTime)})</div>
+          </div>
+        `;
+        routeList.appendChild(item);
+      });
+
+      // 종료 (시작점으로 복귀)
+      const endItem = document.createElement('li');
+      endItem.className = 'route-item';
+      endItem.innerHTML = `
+        <span class="order">🏁</span>
+        <div class="route-item-content">
+          <div class="address">종료: ${route.startLocation.raw}로 복귀</div>
+        </div>
+      `;
+      routeList.appendChild(endItem);
+
+      document.getElementById('result').style.display = 'block';
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('error');
+      errorDiv.innerHTML = `
+        <div class="error-title">❌ 오류가 발생했습니다</div>
+        <div>${message.replace(/\n/g, '<br>')}</div>
+      `;
+      errorDiv.style.display = 'block';
+    }
+
+    function formatDistance(meters) {
+      if (meters >= 1000) {
+        return (meters / 1000).toFixed(1) + 'km';
+      }
+      return Math.round(meters) + 'm';
+    }
+
+    function formatTime(seconds) {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      
+      if (hours > 0) {
+        return `${hours}시간 ${minutes}분`;
+      }
+      return `${minutes}분`;
+    }
+  </script>
+</body>
+</html>
+
